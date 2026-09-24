@@ -1,0 +1,7 @@
+{
+    "output": "build",
+    "board": "arduino:renesas_uno:unor4wifi",
+    "port": "COM3",
+    "programmer": "cmsis-dap",
+    "sketch": "arduino\\test\\test_blink\\test_blink.ino"
+}
