@@ -1,0 +1,13 @@
+{
+	"folders": [
+		{
+			"name": "ESP32_tets",
+			"path": "../../../../../../PlatformIO/Projects/ESP32_tets"
+		},
+		{
+			"name": "embedded-projects",
+			"path": "../.."
+		}
+	],
+	"settings": {}
+}
