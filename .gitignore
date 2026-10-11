@@ -46,3 +46,7 @@ Desktop.ini
 *.swp
 *.swo
 .idea/
+
+# --- Pico 2 W ---
+secrets.h
+secrets.py
