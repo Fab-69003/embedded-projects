@@ -165,49 +165,60 @@ int main(void)
   {
     /* USER CODE END WHILE */
 
-    /* USER CODE BEGIN 3 */
-	  HAL_ADC_Start(&hadc1);
-	  if (HAL_ADC_PollForConversion(&hadc1, 10) == HAL_OK)
-	  {
-	    uint32_t raw = HAL_ADC_GetValue(&hadc1);
-	    float vsense = raw * 3.3f / 4095.0f;
-	    float temp = (vsense - 0.76f) / 0.0025f + 25.0f;   // formule de la fiche technique
+	  /* USER CODE BEGIN 3 */
+	  static uint32_t t_pwm = 0, t_temp = 0;
+	  static int duty = 0, step = 5;
+	  uint32_t now = HAL_GetTick();
 
-	    int32_t t100 = (int32_t)(temp * 100.0f);
+	  /* Tâche 1 : bouton (réaction immédiate) */
+	  if (button_pressed)
+	  {
+	    static uint32_t count = 0;
 	    char msg[40];
-	    int n = snprintf(msg, sizeof(msg), "Temp: %ld.%02ld C\r\n",
-	                     (long)(t100 / 100), (long)(abs(t100) % 100));
+	    button_pressed = 0;
+	    count++;
+	    int n = snprintf(msg, sizeof(msg), "Appui #%lu\r\n", (unsigned long)count);
 	    HAL_UART_Transmit(&huart2, (uint8_t *)msg, n, 100);
-	    char line[17];
-	    snprintf(line, sizeof(line), "%ld.%02ld C      ",
-	             (long)(t100 / 100), (long)(abs(t100) % 100));
-	    lcd_cursor(1, 0);
-	    lcd_print(line);
 	  }
-	  HAL_ADC_Stop(&hadc1);
 
-		if (button_pressed)
-		{
-			  static uint32_t count = 0;
-			  char msg[40];
-			  button_pressed = 0;
-			  count++;
-			  int n = snprintf(msg, sizeof(msg), "Appui #%lu\r\n", count);
-			  HAL_UART_Transmit(&huart2, (uint8_t *)msg, n, 100);
-		}
-
-	  for (int i = 0; i < 1000; i += 5)
+	  /* Tâche 2 : respiration de la LED, un pas toutes les 5 ms */
+	  if (now - t_pwm >= 5)
 	  {
-	    __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, i);
-	    HAL_Delay(5);
+	    t_pwm = now;
+	    duty += step;
+	    if (duty >= 999)    { duty = 999; step = -5; }
+	    else if (duty <= 0) { duty = 0;   step = 5;  }
+	    __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, duty);
 	  }
-	  for (int i = 995; i >= 0; i -= 5)
+
+	  /* Tâche 3 : mesure de température, une fois par seconde */
+	  if (now - t_temp >= 1000)
 	  {
-	    __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, i);
-	    HAL_Delay(5);
+	    t_temp = now;
+
+	    HAL_ADC_Start(&hadc1);
+	    if (HAL_ADC_PollForConversion(&hadc1, 10) == HAL_OK)
+	    {
+	      uint32_t raw = HAL_ADC_GetValue(&hadc1);
+	      float vsense = raw * 3.3f / 4095.0f;
+	      float temp = (vsense - 0.76f) / 0.0025f + 25.0f;
+	      int32_t t100 = (int32_t)(temp * 100.0f);
+
+	      char msg[40];
+	      int n = snprintf(msg, sizeof(msg), "Temp: %ld.%02ld C\r\n",
+	                       (long)(t100 / 100), (long)(abs(t100) % 100));
+	      HAL_UART_Transmit(&huart2, (uint8_t *)msg, n, 100);
+
+	      char line[17];
+	      snprintf(line, sizeof(line), "%ld.%02ld C      ",
+	               (long)(t100 / 100), (long)(abs(t100) % 100));
+	      lcd_cursor(1, 0);
+	      lcd_print(line);
+	    }
+	    HAL_ADC_Stop(&hadc1);
 	  }
   }
-  /* USER CODE END 3 */
+	  /* USER CODE END 3 */
 }
 
 /**
